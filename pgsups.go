@@ -12,8 +12,8 @@ import (
 	"time"
 
 	"database/sql"
-	//_ "github.com/lib/pq"
-	_ "github.com/jackc/pgx/v4/stdlib"
+	"github.com/lib/pq"
+	//_ "github.com/jackc/pgx/v4/stdlib"
 )
 
 // строка подключения к БД
@@ -422,7 +422,9 @@ func updateTempN(rids []int32, portion int) string {
 
 func updateAny(rids []int32, portion int) string {
 	q := "UPDATE testTbl SET mark=mark+1 WHERE rid = ANY($1)"
-	if _, err := db.Exec(q, rids); err != nil {
+	// для pq вызов: db.Exec(q, pq.Array(rids))
+	// для pgx вызов: db.Exec(q, rids)
+	if _, err := db.Exec(q, pq.Array(rids)); err != nil {
 		return q + " не поддерживается для срезов этим драйвером"
 	}
 	return q
