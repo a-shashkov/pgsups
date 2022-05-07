@@ -36,6 +36,7 @@ type fupdate = func([]int32, int) string
 func main() {
 	//создаём таблицу и заполняем её
 	prepareTable()
+
 	//замеряем время работы разных методов
 	fmt.Printf("Тестируем изменение %d записей, усредняем по %d тестам \n", updateRecs, testCount)
 
@@ -62,6 +63,8 @@ func main() {
 	bench(updateTempN, 8)
 	bench(updateTempN, 25)
 	bench(updateTempN, 100)
+
+	bench(updateAny, 0)
 
 	//завершаем работу
 	done()
@@ -126,7 +129,7 @@ func createStruct() {
 
 //заполняем таблицу тестовыми данными
 func fillTable() {
-	gen = rand.New(rand.NewSource( 0 /*time.Now().UnixNano()*/ ))
+	gen = rand.New(rand.NewSource(0 /*time.Now().UnixNano()*/))
 	//начинаем транзакцию
 	tx, err := db.Begin()
 	if err != nil {
@@ -200,8 +203,13 @@ func bench(fup fupdate, portion int) {
 		dur1 = avg //первый замер
 	}
 	// коэффициент сравнения с первым методом
-	k := float64(dur1) / avg
-
+	var k float64
+	if avg > 0.01 {
+		k = float64(dur1) / avg
+	} else {
+		k = 0
+	}
+	
 	fmt.Printf("%6.1f мс  x%-6.2f  %s \n", avg, k, name)
 }
 
@@ -410,4 +418,12 @@ func updateTempN(rids []int32, portion int) string {
 		log.Panic(err)
 	}
 	return res
+}
+
+func updateAny(rids []int32, portion int) string {
+	q := "UPDATE testTbl SET mark=mark+1 WHERE rid = ANY($1)"
+	if _, err := db.Exec(q, rids); err != nil {
+		return q + " не поддерживается для срезов этим драйвером"
+	}
+	return q
 }
